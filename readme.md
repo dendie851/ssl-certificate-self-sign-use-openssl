@@ -2,6 +2,9 @@
 
 Dokumentasi praktis dari nol untuk membuat sertifikat SSL — baik **Self-Signed** maupun berbasis **Private Enterprise CA (Microsoft AD CS)** — lengkap dengan dukungan **Subject Alternative Name (SAN)** untuk Domain & IP, serta cara memasangnya di **Apache,Nginx**.
 
+
+![Cek OpenSSL — prompt OpenSSL> di Git Bash](design/arisitektur.png)
+
 📋 Daftar Isi
 - [Panduan Lengkap: Pembuatan \& Pemasangan SSL (OpenSSL) untuk Apache](#panduan-lengkap-pembuatan--pemasangan-ssl-openssl-untuk-apache)
   - [1. Konsep Dasar: Self-Signed vs Public CA vs Enterprise CA (AD CS)](#1-konsep-dasar-self-signed-vs-public-ca-vs-enterprise-ca-ad-cs)
