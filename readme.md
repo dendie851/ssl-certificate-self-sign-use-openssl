@@ -1,47 +1,34 @@
-# Panduan Lengkap: Pembuatan & Pemasangan SSL (OpenSSL & Microsoft AD CS) untuk Apache
+# Panduan Lengkap: Pembuatan & Pemasangan SSL (OpenSSL) untuk Apache
 
-> Dokumentasi praktis dari nol untuk membuat sertifikat SSL — baik **Self-Signed** maupun berbasis **Private Enterprise CA (Microsoft AD CS)** — lengkap dengan dukungan **Subject Alternative Name (SAN)** untuk Domain & IP, serta cara memasangnya di **Apache (XAMPP / Apache24)**.
+Dokumentasi praktis dari nol untuk membuat sertifikat SSL — baik **Self-Signed** maupun berbasis **Private Enterprise CA (Microsoft AD CS)** — lengkap dengan dukungan **Subject Alternative Name (SAN)** untuk Domain & IP, serta cara memasangnya di **Apache,Nginx**.
 
-**Studi kasus di panduan ini:**
-| Item | Nilai |
-| --- | --- |
-| Domain (CN) | `dev01.dendie.local` |
-| Hostname pendek | `dev01` |
-| IP Server | `192.168.50.220` |
-| Masa berlaku contoh | 730 hari (2 tahun, 06 Okt 2026 – 05 Okt 2028) |
-
-**Peta screenshot → bab (semua file di `ss/` sudah dipakai di judul yang sesuai):**
-
-| Screenshot | Judul / Bab yang sesuai |
-| --- | --- |
-| `1-cek-openssl.png` | Bab 2. Prasyarat & Instalasi OpenSSL |
-| `2-generate-private-key-domain-ceritifiate.png` | Bab 3.1 Generate Self-Signed (perintah `openssl req -x509`) |
-| `3-generate-private-key-domain-ceritifiate-result.png` | Bab 3.2 Hasil generate (`webserver.key` + `webserver.crt`) |
-| `4-generate-csr-for-internal-ca-root.png` | Bab 4.1 Buat CSR untuk Internal CA (perintah `openssl req -new`) |
-| `5-generate-csr-for-internal-ca-root-root-file-csr.png` | Bab 4.1 Isi file `webserver.csr` |
-| `7-memasang-sertifikat-SSL-ke-Apache-Web-Server.png` | Bab 5.3 Restart & verifikasi Apache via XAMPP Control Panel |
-| `8-pointing-dns.png` | Bab 6 Opsi B — pointing via file `hosts` (bukan DNS Manager) |
-| `9-install-ca-di-client.png` | Bab 7 Langkah 2 — Certificate Import Wizard (Local Machine) |
-| `10-install-ca-di-client-2.png` | Bab 7 Langkah 3 — Pilih store Trusted Root CA |
-| `11-install-ca-di-client-cek-valid.png` | Bab 8.1 Verifikasi tab Umum di browser |
-| `12-install-ca-di-client-cek-valid-2.png` | Bab 8.2 Verifikasi tab Detail / Hierarki |
-
-> **Catatan penomoran:** file `ss/6-*.png` tidak ada di repo (nomor loncat dari 5 ke 7). Daftar di atas sudah mencakup **11 file yang ada**.
-
----
-
-## 📋 Daftar Isi
-- [1. Konsep Dasar: Self-Signed vs Public CA vs Enterprise CA (AD CS)](#1-konsep-dasar-self-signed-vs-public-ca-vs-enterprise-ca-ad-cs)
-- [2. Prasyarat & Instalasi OpenSSL](#2-prasyarat--instalasi-openssl)
-- [3. Metode A: Membuat Self-Signed Certificate dengan OpenSSL (SAN Support)](#3-metode-a-membuat-self-signed-certificate-dengan-openssl-san-support)
-- [4. Metode B: Integrasi dengan Internal CA Root — contoh Microsoft AD CS (Rekomendasi Korporat)](#4-metode-b-integrasi-dengan-internal-ca-root--contoh-microsoft-ad-cs-rekomendasi-korporat)
-- [5. Memasang Sertifikat SSL ke Apache Web Server](#5-memasang-sertifikat-ssl-ke-apache-web-server)
-- [6. Pointing DNS / Hosts File](#6-pointing-dns--hosts-file)
-- [7. Install Sertifikat (Root CA) di Client / Browser](#7-install-sertifikat-root-ca-di-client--browser)
-- [8. Pengujian & Verifikasi](#8-pengujian--verifikasi)
-- [9. Troubleshooting Umum](#9-troubleshooting-umum)
-- [10. Keamanan Private Key (Best Practice)](#10-keamanan-private-key-best-practice)
-- [11. Lampiran: Arsitektur & Struktur Berkas](#11-lampiran-arsitektur--struktur-berkas)
+📋 Daftar Isi
+- [Panduan Lengkap: Pembuatan \& Pemasangan SSL (OpenSSL) untuk Apache](#panduan-lengkap-pembuatan--pemasangan-ssl-openssl-untuk-apache)
+  - [1. Konsep Dasar: Self-Signed vs Public CA vs Enterprise CA (AD CS)](#1-konsep-dasar-self-signed-vs-public-ca-vs-enterprise-ca-ad-cs)
+  - [2. Prasyarat \& Instalasi OpenSSL](#2-prasyarat--instalasi-openssl)
+    - [Di Windows:](#di-windows)
+    - [2.1 Verifikasi instalasi](#21-verifikasi-instalasi)
+  - [3. Metode A: Membuat Self-Signed Certificate dengan OpenSSL (SAN Support)](#3-metode-a-membuat-self-signed-certificate-dengan-openssl-san-support)
+    - [3.1 Siapkan file konfigurasi `openssl-san.cnf`](#31-siapkan-file-konfigurasi-openssl-sancnf)
+    - [3.2 Generate Private Key + Sertifikat Self-Signed sekaligus](#32-generate-private-key--sertifikat-self-signed-sekaligus)
+    - [3.3 Hasil generate](#33-hasil-generate)
+    - [3.4 Bedah argumen perintah (breakdown)](#34-bedah-argumen-perintah-breakdown)
+  - [4. Metode B: Integrasi dengan Internal CA Root — contoh Microsoft AD CS (Rekomendasi Korporat)](#4-metode-b-integrasi-dengan-internal-ca-root--contoh-microsoft-ad-cs-rekomendasi-korporat)
+    - [4.1 Buat CSR \& Private Key](#41-buat-csr--private-key)
+    - [4.2 Submit CSR ke Microsoft AD CS (topik tambahan — sebelumnya hilang)](#42-submit-csr-ke-microsoft-ad-cs-topik-tambahan--sebelumnya-hilang)
+    - [4.3 File yang Anda terima dari CA](#43-file-yang-anda-terima-dari-ca)
+  - [5. Memasang Sertifikat SSL ke Apache Web Server](#5-memasang-sertifikat-ssl-ke-apache-web-server)
+    - [5.1 Salin file sertifikat](#51-salin-file-sertifikat)
+    - [5.2 Konfigurasi VirtualHost Apache](#52-konfigurasi-virtualhost-apache)
+    - [5.3 Restart dan pastikan Apache berjalan](#53-restart-dan-pastikan-apache-berjalan)
+  - [6. Pointing DNS / Hosts File](#6-pointing-dns--hosts-file)
+  - [7. Install Sertifikat (Root CA) di Client / Browser](#7-install-sertifikat-root-ca-di-client--browser)
+  - [8. Pengujian \& Verifikasi](#8-pengujian--verifikasi)
+    - [8.1 Cek Detail Sertifikat (Tab *Umum*)](#81-cek-detail-sertifikat-tab-umum)
+    - [8.2 Cek Hierarki Sertifikat (Tab *Detail*)](#82-cek-hierarki-sertifikat-tab-detail)
+  - [9. Troubleshooting Umum](#9-troubleshooting-umum)
+  - [10. Keamanan Private Key (Best Practice)](#10-keamanan-private-key-best-practice)
+  - [11. Struktur File](#11-struktur-file)
 
 ---
 
@@ -253,8 +240,7 @@ Agar domain `dev01.dendie.local` dapat diakses dari client, lakukan salah satu c
   | --- | --- | --- |
   | `dev01` | `dev01.dendie.local` | `192.168.50.220` |
 
-  > Koreksi: screenshot ss/8-pointing-dns.png sebenarnya menampilkan edit file hosts (bukan DNS Manager). Lihat Opsi B di bawah.
-
+ 
 * **Opsi B (Per Client, tanpa DNS Server):** Edit file `hosts` di setiap client (`C:\Windows\System32\drivers\etc\hosts`) dan tambahkan mapping berikut:
 
   ```hosts
@@ -318,16 +304,6 @@ Pada tab **Detail**, cek bagian **Hierarki Sertifikat**:
 
 ---
 
-### 8.3 Verifikasi via OpenSSL (topik tambahan - sebelumnya hilang)
-
-Cek SAN, masa berlaku, dan fingerprint langsung dari file:
-
-```bash
-openssl x509 -in webserver.crt -noout -subject -issuer -dates
-openssl x509 -in webserver.crt -noout -ext subjectAltName
-openssl x509 -in webserver.crt -noout -fingerprint -sha256
-openssl s_client -connect dev01.dendie.local:443 -servername dev01.dendie.local -showcerts
-```
 
 ## 9. Troubleshooting Umum
 
@@ -357,33 +333,12 @@ openssl s_client -connect dev01.dendie.local:443 -servername dev01.dendie.local 
 
 ---
 
-## 11. Lampiran: Arsitektur & Struktur Berkas
-
-### Arsitektur
-
-Diagram arsitektur alur penerbitan dan pemasangan sertifikat SSL tersedia di [`design/design.drawio`](design/design.drawio) (buka menggunakan [draw.io](https://app.diagrams.net/)).
-
-### Struktur Berkas Repositori
+## 11. Struktur File 
 
 ```
 ssl-certificate-self-sign-use-openssl/
-├── readme.md                  # Dokumentasi (file ini)
 ├── openssl-san.cnf            # Konfigurasi OpenSSL (SAN untuk Domain & IP)
 ├── webserver.key              # Private Key (RAHASIA - jangan dibagikan)
 ├── webserver.crt              # Sertifikat Self-Signed
 ├── webserver.csr              # Certificate Signing Request (untuk Metode B / Internal CA)
-├── design/
-│   └── design.drawio          # Diagram arsitektur
-└── ss/                        # Screenshot/langkah-langkah visual
-    ├── 1-cek-openssl.png
-    ├── 2-generate-private-key-domain-ceritifiate.png
-    ├── 3-generate-private-key-domain-ceritifiate-result.png
-    ├── 4-generate-csr-for-internal-ca-root.png
-    ├── 5-generate-csr-for-internal-ca-root-root-file-csr.png
-    ├── 7-memasang-sertifikat-SSL-ke-Apache-Web-Server.png
-    ├── 8-pointing-dns.png
-    ├── 9-install-ca-di-client.png
-    ├── 10-install-ca-di-client-2.png
-    ├── 11-install-ca-di-client-cek-valid.png
-    └── 12-install-ca-di-client-cek-valid-2.png
-```
+
